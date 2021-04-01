@@ -88,6 +88,7 @@ namespace PittigRestoMVC.Areas.Admin.Controllers
 
             if (files.Count > 0)
             {
+   
                 //uploaded image naar wwwroot/images schrijven:
                 var uploadsPath = System.IO.Path.Combine(webRootPath, "images");
                 var extension = System.IO.Path.GetExtension(files[0].FileName);//bv "Kir.png" => extension= ".png"
@@ -122,14 +123,19 @@ namespace PittigRestoMVC.Areas.Admin.Controllers
                 return NotFound();
             }
 
-            var menuItem = await _context.MenuItem.FindAsync(id);
-            if (menuItem == null)
+            MenuItemVM.MenuItem = await _context.MenuItem.Include(m => m.Category)
+                .Include(m => m.SubCategory).SingleOrDefaultAsync(m => m.Id == id);
+
+            if (MenuItemVM.MenuItem == null)
             {
                 return NotFound();
             }
-            ViewData["CategoryId"] = new SelectList(_context.Category, "Id", "Name", menuItem.CategoryId);
-            ViewData["SubCategoryId"] = new SelectList(_context.SubCategory, "Id", "Name", menuItem.SubCategoryId);
-            return View(menuItem);
+
+            MenuItemVM.SubCategory = await _context.SubCategory
+                .Where(s => s.CategoryId == MenuItemVM.MenuItem.CategoryId).ToListAsync();
+
+         
+            return View(MenuItemVM);
         }
 
         // POST: Admin/MenuItems/Edit/5
