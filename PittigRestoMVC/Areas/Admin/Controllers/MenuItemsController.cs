@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Hosting;
@@ -72,15 +73,40 @@ namespace PittigRestoMVC.Areas.Admin.Controllers
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> CreatePOST()// MenuItemViewModel menuItemVM)
         {
-            if (ModelState.IsValid)
+            MenuItemVM.MenuItem.SubCategoryId = Convert.ToInt32(Request.Form["SubCategoryId"].ToString());
+            if (!ModelState.IsValid)
             {
-                _context.Add(MenuItemVM.MenuItem);
-                await _context.SaveChangesAsync();
-                return RedirectToAction(nameof(Index));
+                return View(MenuItemVM);
             }
-            //ViewData["CategoryId"] = new SelectList(_context.Category, "Id", "Name", menuItem.CategoryId);
-            //ViewData["SubCategoryId"] = new SelectList(_context.SubCategory, "Id", "Name", menuItem.SubCategoryId);
-            return View(MenuItemVM);
+               _context.Add(MenuItemVM.MenuItem);
+                await _context.SaveChangesAsync();
+            //nog uploaded image uit Form naar disk schrijven:
+            string webRootPath = _hostingEnvironment.WebRootPath;
+            var files = HttpContext.Request.Form.Files;
+            var menuItemFromDb = await _context.MenuItem.FindAsync(MenuItemVM.MenuItem.Id);
+
+
+            if (files.Count > 0)
+            {
+                //uploaded image naar wwwroot/images schrijven:
+                var uploadsPath = System.IO.Path.Combine(webRootPath, "images");
+                var extension = System.IO.Path.GetExtension(files[0].FileName);//bv "Kir.png" => extension= ".png"
+
+                //fileStream openen om naar disk te schrijven
+                using (var fileStream = new FileStream(uploadsPath + "\\" + MenuItemVM.MenuItem.Id + extension, FileMode.Create))
+                {
+                    files[0].CopyTo(fileStream);
+                }
+                menuItemFromDb.Image = @"\images\" + MenuItemVM.MenuItem.Id + extension;
+            }
+            else
+            { 
+                //TO DO;
+                //Default food image nemen
+            }
+            await _context.SaveChangesAsync();
+            return RedirectToAction(nameof(Index));
+
         }
 
         // GET: Admin/MenuItems/Edit/5
