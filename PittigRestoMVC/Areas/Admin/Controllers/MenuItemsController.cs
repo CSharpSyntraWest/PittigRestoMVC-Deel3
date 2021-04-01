@@ -100,9 +100,14 @@ namespace PittigRestoMVC.Areas.Admin.Controllers
                 menuItemFromDb.Image = @"\images\" + MenuItemVM.MenuItem.Id + extension;
             }
             else
-            { 
+            {
                 //TO DO;
                 //Default food image nemen
+                //var defaultImgPath = webRootPath + @"\images\default_food.png";
+                var defaultImgPath = Path.Combine(webRootPath, "images", "default_food.png");
+                var destImgPath = Path.Combine(webRootPath, "images", MenuItemVM.MenuItem.Id + ".png");
+                System.IO.File.Copy(defaultImgPath, destImgPath);
+                menuItemFromDb.Image = @"\images\" + MenuItemVM.MenuItem.Id + ".png";
             }
             await _context.SaveChangesAsync();
             return RedirectToAction(nameof(Index));
