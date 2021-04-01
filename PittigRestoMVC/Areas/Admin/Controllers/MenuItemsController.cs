@@ -141,38 +141,54 @@ namespace PittigRestoMVC.Areas.Admin.Controllers
         // POST: Admin/MenuItems/Edit/5
         // To protect from overposting attacks, enable the specific properties you want to bind to.
         // For more details, see http://go.microsoft.com/fwlink/?LinkId=317598.
-        [HttpPost]
+        [HttpPost, ActionName("Edit")]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Edit(int id, [Bind("Id,Name,Description,Spicyness,Image,CategoryId,SubCategoryId,Price")] MenuItem menuItem)
+        public async Task<IActionResult> EditPOST(int? id)
         {
-            if (id != menuItem.Id)
+            if (id == null)
             {
                 return NotFound();
             }
-
-            if (ModelState.IsValid)
+            if (id != MenuItemVM.MenuItem.Id)
             {
-                try
-                {
-                    _context.Update(menuItem);
-                    await _context.SaveChangesAsync();
-                }
-                catch (DbUpdateConcurrencyException)
-                {
-                    if (!MenuItemExists(menuItem.Id))
-                    {
-                        return NotFound();
-                    }
-                    else
-                    {
-                        throw;
-                    }
-                }
-                return RedirectToAction(nameof(Index));
+                return BadRequest();
             }
-            ViewData["CategoryId"] = new SelectList(_context.Category, "Id", "Name", menuItem.CategoryId);
-            ViewData["SubCategoryId"] = new SelectList(_context.SubCategory, "Id", "Name", menuItem.SubCategoryId);
-            return View(menuItem);
+            if (!ModelState.IsValid)
+            {
+               //?TO DO Subcategorieën invullen
+                return View(MenuItemVM);
+            }
+            //testen of er een image upload is in Request.Form
+            //In dit geval moet de bestaande image worden uitgeveegd en de nieuwe image op disk schrijven
+            string webRootPath = _hostingEnvironment.WebRootPath;
+            var files = HttpContext.Request.Form.Files;
+            var menuItemFromDb = await _context.MenuItem.FindAsync(MenuItemVM.MenuItem.Id);
+            if (files.Count > 0)
+            {
+                var uploads = Path.Combine(webRootPath, "images");
+                var extension_new = Path.GetExtension(files[0].FileName);
+                //Veeg de bestaande image weg:
+                var imagePath = Path.Combine(webRootPath, menuItemFromDb.Image.TrimStart('\\'));
+                if (System.IO.File.Exists(imagePath))
+                    System.IO.File.Delete(imagePath);
+                //Schrijven van nieuwe image op disk (dezelfde manier als bij Create)
+                //we will upload the new file
+                using (var filesStream = new FileStream(Path.Combine(uploads, MenuItemVM.MenuItem.Id + extension_new), FileMode.Create))
+                {
+                    files[0].CopyTo(filesStream);
+                }
+                menuItemFromDb.Image = @"\images\" + MenuItemVM.MenuItem.Id + extension_new;
+            }
+            menuItemFromDb.Name = MenuItemVM.MenuItem.Name;
+            menuItemFromDb.Description = MenuItemVM.MenuItem.Description;
+            menuItemFromDb.Price = MenuItemVM.MenuItem.Price;
+            menuItemFromDb.Spicyness = MenuItemVM.MenuItem.Spicyness;
+            menuItemFromDb.CategoryId = MenuItemVM.MenuItem.CategoryId;
+            menuItemFromDb.SubCategoryId = MenuItemVM.MenuItem.SubCategoryId;
+            await _context.SaveChangesAsync();
+                
+               
+            return RedirectToAction(nameof(Index));
         }
 
         // GET: Admin/MenuItems/Delete/5
